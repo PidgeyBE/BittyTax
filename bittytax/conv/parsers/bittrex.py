@@ -150,6 +150,12 @@ DataParser(DataParser.TYPE_EXCHANGE,
            row_handler=parse_bittrex_deposits_v1)
 
 DataParser(DataParser.TYPE_EXCHANGE,
+           "Bittrex Deposits",
+           ['Id', 'Currency', 'Amount', 'Confirmations', 'LastUpdatedDate', 'TxId', 'CryptoAddress', 'Source', 'PropertyBagError', 'BankInfo', 'DepositUuid', 'TransactionDetailStateValue', 'TransactionDetailStateLabel', 'TravelRuleState', 'State'],
+           worksheet_name="Bittrex D",
+           row_handler=parse_bittrex_deposits_v2)
+
+DataParser(DataParser.TYPE_EXCHANGE,
            "Bittrex Withdrawals",
            ['PaymentUuid', 'Currency', 'Amount', 'Address', 'OpenedDate', 'Authorized', 'Pending',
             'TxFee', 'Canceled', 'TxId'],
@@ -160,5 +166,11 @@ DataParser(DataParser.TYPE_EXCHANGE,
            "Bittrex Withdrawals",
            ['PaymentUuid', 'Currency', 'Amount', 'Address', 'Opened', 'Authorized',
             'PendingPayment', 'TxCost', 'TxId', 'Canceled', 'InvalidAddress'],
+           worksheet_name="Bittrex W",
+           row_handler=parse_bittrex_withdrawals)
+
+DataParser(DataParser.TYPE_EXCHANGE,
+           "Bittrex Withdrawals",
+           ['PaymentUuid', 'Currency', 'Amount', 'Address', 'OpenedDate', 'Authorized', 'Pending', 'TxId', 'TxFee', 'Target', 'BankInfo', 'Canceled'],
            worksheet_name="Bittrex W",
            row_handler=parse_bittrex_withdrawals)
