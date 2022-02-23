@@ -7,6 +7,7 @@ import io
 
 from colorama import Fore, Back
 import xlrd
+from copy import deepcopy
 
 from ..config import config
 from .dataparser import DataParser
@@ -193,4 +194,4 @@ class DataFile(object):
             else:
                 break
 
-        return parser
+        return deepcopy(parser)

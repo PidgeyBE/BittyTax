@@ -1,0 +1,112 @@
+<h2>Fund Acquisition by Year</h2>
+<table width="100%">
+    <tr>
+        <th></th>
+        <th align="left">Date</th>
+        {% for asset in balance_history.assets %}
+        <th align="left">{{asset}}</th>
+        {% endfor %}
+        <th align="left">Note</th>
+    </tr>
+
+    <tr>
+        <td colspan="9"><b>Trades:</b></td>
+    </tr>
+    {% for year, ydata in balance_history.years.items() %}
+    <tr>
+        <td></td>
+        <td>Year {{year}}</td>
+        {% for asset in balance_history.assets %}
+        <td><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else "0"}}</b><br>
+        {{"(" if ydata.get(asset)}}{{"+" if ydata.get(asset) and ydata[asset] > 0}}{{ydata.get(asset)|quantityfilter2 if ydata.get(asset) else ""}}{{")" if ydata.get(asset)}}</td>
+        {% endfor %}
+        <td align="right"></td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>Funds Acquisition by Month</h2>
+<table width="100%">
+    <tr>
+        <th></th>
+        <th align="left">Date</th>
+        {% for asset in balance_history.assets %}
+        <th align="left">{{asset}}</th>
+        {% endfor %}
+        <th align="left">Note</th>
+    </tr>
+{% for year, ydata in balance_history.years.items() %}
+    <tr>
+        <td colspan="9"><b>Trades {{year}}:</b></td>
+    </tr>
+    {% for month, mdata in balance_history.months[year].items() %}
+    <tr>
+        <td></td>
+        <td>{{month}}/{{year}}</td>
+        {% for asset in balance_history.assets %}
+        <td>{{mdata.get(asset)|quantityfilter2 if mdata.get(asset) else ""}}</td>
+        {% endfor %}
+        <td align="right"></td>
+    </tr>
+    {% endfor %}
+    <tr>
+        <td colspan="2"><b>Yearly Total {{year}}</b></td>
+        {% for asset in balance_history.assets %}
+        <td><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else "0"}}<br>
+        {{"(" if ydata.get(asset)}}{{"+" if ydata.get(asset) and ydata[asset] > 0}}{{ydata.get(asset)|quantityfilter2 if
+        ydata.get(asset) else ""}}{{")" if ydata.get(asset)}}</b></td>
+        {% endfor %}
+        <td align="right"></td>
+    </tr>
+{% endfor %}
+</table>
+
+
+<h2>Funds Acquisition by Transaction</h2>
+<table width="100%">
+    <tr>
+        <th></th>
+        <th align="left">Date</th>
+{% for asset in balance_history.assets %}
+        <th align="left">{{asset}}</th>
+{% endfor %}
+        <th align="left">Note</th>
+    </tr>
+{% for year, ydata in balance_history.years.items() %}
+    <tr>
+        <td colspan="9"><b>Trades {{year}}:</b></td>
+    </tr>
+    {% for month, mdata in balance_history.months[year].items() %}
+        {% for time, data in balance_history.rows.items() %}
+            {% if time.month == month and time.year == year %}
+                <tr>
+                    <td></td>
+                    <td>{{time|datefilter}}</td>
+                {% for asset in balance_history.assets %}
+                    <td>{{data.get(asset)|quantityfilter2 if data.get(asset) else ""}}</td>
+                {% endfor %}
+                    <td align="right">{{data["t_type"]}}</td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+        <tr>
+            <td colspan="2"><b>Monthly Total {{month}}/{{year}}</b></td>
+            {% for asset in balance_history.assets %}
+            <td><b>{{mdata.get(asset)|quantityfilter2 if mdata.get(asset) else ""}}</b></td>
+            {% endfor %}
+            <td align="right"></td>
+        </tr>
+    {% endfor %}
+            <tr>
+                <td colspan="2"><b>Yearly Total {{year}}</b></td>
+        {% for asset in balance_history.assets %}
+        <td><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else
+                "0"}}<br>
+                {{"(" if ydata.get(asset)}}{{"+" if ydata.get(asset) and ydata[asset] > 0}}{{ydata.get(asset)|quantityfilter2 if
+                ydata.get(asset) else ""}}{{")" if ydata.get(asset)}}</b></td>
+        {% endfor %}
+                <td align="right"></td>
+            </tr>
+{% endfor %}
+</table>
+<br>

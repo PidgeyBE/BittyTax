@@ -19,15 +19,16 @@ from .config import config
 class ReportPdf(object):
     DEFAULT_FILENAME = 'BittyTax_Report'
     FILE_EXTENSION = 'pdf'
-    TEMPLATE_FILE = 'tax_report.html'
+    TEMPLATE_FILE = 'suma_report.html'
 
-    def __init__(self, progname, audit, tax_report, price_report, holdings_report, args):
+    def __init__(self, progname, audit, balance_history, tax_report, price_report, holdings_report, args):
         self.env = jinja2.Environment(loader=jinja2.PackageLoader('bittytax', 'templates'))
         self.filename = self.get_output_filename(args.output_filename, self.FILE_EXTENSION)
 
         self.env.filters['datefilter'] = self.datefilter
         self.env.filters['datefilter2'] = self.datefilter2
         self.env.filters['quantityfilter'] = self.quantityfilter
+        self.env.filters['quantityfilter2'] = self.quantityfilter2
         self.env.filters['valuefilter'] = self.valuefilter
         self.env.filters['ratefilter'] = self.ratefilter
         self.env.filters['ratesfilter'] = self.ratesfilter
@@ -38,12 +39,15 @@ class ReportPdf(object):
                                 'author': '{} v{}'.format(progname, __version__),
                                 'config': config,
                                 'audit': audit,
+                                'balance_history': balance_history,
                                 'tax_report': tax_report,
                                 'price_report': price_report,
                                 'holdings_report': holdings_report,
                                 'args': args})
 
         with ProgressSpinner():
+            with open(f"{self.filename}.html", "w") as f:
+                f.write(html)
             pdf_file = open(self.filename, 'w+b')
             status = pisa.CreatePDF(html, dest=pdf_file)
             pdf_file.close()
@@ -68,6 +72,10 @@ class ReportPdf(object):
     @staticmethod
     def quantityfilter(quantity):
         return '{:0,f}'.format(quantity.normalize())
+
+    @staticmethod
+    def quantityfilter2(quantity):
+        return '{:0,.6f}'.format(quantity.normalize())
 
     @staticmethod
     def valuefilter(value):

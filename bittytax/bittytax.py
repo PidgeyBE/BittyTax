@@ -23,6 +23,7 @@ from .price.exceptions import DataSourceError
 from .tax import TaxCalculator, CalculateCapitalGains as CCG
 from .report import ReportLog, ReportPdf
 from .exceptions import ImportFailureError
+from .balance_history_log import BalanceHistoryLog
 
 if sys.stdout.encoding != 'UTF-8':
     if sys.version_info[:2] >= (3, 7):
@@ -107,6 +108,8 @@ def main():
         parser.exit()
 
     audit = AuditRecords(transaction_records)
+    balance_history = BalanceHistoryLog(transaction_records)
+    # balance_history.print()
 
     try:
         tax, value_asset = do_tax(transaction_records, args.tax_rules, args.skip_integrity)
@@ -136,6 +139,7 @@ def main():
     else:
         ReportPdf(parser.prog,
                   audit,
+                  balance_history,
                   tax.tax_report,
                   value_asset.price_report,
                   tax.holdings_report,
