@@ -2,8 +2,10 @@ from . import accointing
 from . import binance
 from . import barclays
 from . import bitfinex
+from . import bitpanda
 from . import bitstamp
 from . import bittrex
+from . import bittylicious
 from . import blockchain
 from . import blockfi
 from . import bscscan
@@ -14,6 +16,7 @@ from . import circle
 from . import coinbase
 from . import coinbasepro
 from . import coinfloor
+from . import coinlist
 from . import coinomi
 from . import cointracking
 from . import cryptocom
@@ -37,6 +40,7 @@ from . import kraken
 from . import kucoin
 from . import ledgerlive
 from . import liquid
+from . import mercatox
 from . import nault
 from . import nexo
 from . import okex
