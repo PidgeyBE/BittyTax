@@ -10,8 +10,31 @@ from colorama import Fore, Back, Style
 from tqdm import tqdm
 
 from .config import config
+from .transactions import TransactionRecord
 
-PRINT_ASSETS = ["EUR", "USD", "XMR", "BTC", "ETH", "SOL"]
+PRINT_ASSETS = ["EUR", "USD", "XMR", "BTC", "ETH", "SOL", "FTT"]
+
+
+TYPE_DEPOSIT = TransactionRecord.TYPE_DEPOSIT
+TYPE_MINING = TransactionRecord.TYPE_MINING
+TYPE_STAKING = TransactionRecord.TYPE_STAKING
+TYPE_INTEREST = TransactionRecord.TYPE_INTEREST
+TYPE_DIVIDEND = TransactionRecord.TYPE_DIVIDEND
+TYPE_INCOME = TransactionRecord.TYPE_INCOME
+TYPE_GIFT_RECEIVED = TransactionRecord.TYPE_GIFT_RECEIVED
+TYPE_AIRDROP = TransactionRecord.TYPE_AIRDROP
+TYPE_TRADE = TransactionRecord.TYPE_TRADE
+TYPE_WITHDRAWAL = TransactionRecord.TYPE_WITHDRAWAL
+TYPE_SPEND = TransactionRecord.TYPE_SPEND
+TYPE_GIFT_SENT = TransactionRecord.TYPE_GIFT_SENT
+TYPE_GIFT_SPOUSE = TransactionRecord.TYPE_GIFT_SPOUSE
+TYPE_CHARITY_SENT = TransactionRecord.TYPE_CHARITY_SENT
+TYPE_LOST = TransactionRecord.TYPE_LOST
+TYPE_TRADE = TransactionRecord.TYPE_TRADE
+
+EXTERNAL_TYPES = {TYPE_SPEND, TYPE_GIFT_SENT, TYPE_GIFT_SPOUSE, TYPE_CHARITY_SENT,
+                    TYPE_DEPOSIT, TYPE_WITHDRAWAL
+                }
 
 def ddict():
     return defaultdict(ddict)
@@ -23,6 +46,7 @@ class BalanceHistoryLog(object):
         self.months = defaultdict(ddict)
         self.years = defaultdict(ddict)
         self.assets = PRINT_ASSETS
+        self.other_assets = []
 
         if config.debug:
             print("%sBalance History log transaction records" % Fore.CYAN)
@@ -39,9 +63,31 @@ class BalanceHistoryLog(object):
             if tr.sell:
                 self._subtract_tokens(tr.sell, tr.fee)
 
-        # cummulative numbers
-        self.years_cum = deepcopy(self.years)
+
+        # In montly/transaction overviews, we don't make a difference between Internal/External
+        self.months_diff = deepcopy(self.months)
         years = [y for y in self.years]
+        for year in years:
+            months = [y for y in self.months[year]]
+            for month in months:
+                assets = set([k for k in self.months_diff[year][month]["Internal"].keys()] + [k for k in self.months_diff[year][month]["External"].keys()])
+                for asset in assets:
+                    self.months_diff[year][month][asset] = self.months_diff[year][month]["Internal"].get(asset, 0) + self.months_diff[year][month]["External"].get(asset, 0)
+                del self.months_diff[year][month]["Internal"]
+                del self.months_diff[year][month]["External"]
+
+        self.years_diff = deepcopy(self.years)
+        years = [y for y in self.years]
+        for year in years:
+            assets = set([k for k in self.years_diff[year]["Internal"].keys()] + [k for k in self.years_diff[year]["External"].keys()])
+            for asset in assets:
+                self.years_diff[year][asset] = self.years_diff[year]["Internal"].get(asset, 0) + self.years_diff[year]["External"].get(asset, 0)
+            del self.years_diff[year]["Internal"]
+            del self.years_diff[year]["External"]
+
+        # cummulative numbers
+        self.years_cum = deepcopy(self.years_diff)
+       
         # add previous year to every year to calculate the cumulative
         # skip first year
         for year in years[1:]:
@@ -55,12 +101,21 @@ class BalanceHistoryLog(object):
     def _add_tokens(self, buy, fee):
         timestamp = buy.timestamp
 
+        if buy.asset not in self.assets and buy.asset not in self.other_assets:
+            self.other_assets.append(buy.asset)
+
         # rows
         if buy.asset not in self.rows[timestamp]:
             self.rows[timestamp][buy.asset] = buy.quantity
         else:
             self.rows[timestamp][buy.asset] += buy.quantity
         self.rows[timestamp]["t_type"] = buy.t_type
+        self.rows[timestamp]["wallet"] = buy.wallet
+
+        # define type
+        category = "Internal"
+        if buy.t_type in EXTERNAL_TYPES and buy.asset in config.FIAT_LIST:
+            category = "External"
 
         # days
         if buy.asset not in self.days[timestamp.year].get(timestamp.month, {}).get(timestamp.day, {}):
@@ -69,16 +124,16 @@ class BalanceHistoryLog(object):
             self.days[timestamp.year][timestamp.month][timestamp.day][buy.asset] += buy.quantity 
 
         # months
-        if buy.asset not in self.months[timestamp.year][timestamp.month]:
-            self.months[timestamp.year][timestamp.month][buy.asset] = buy.quantity
+        if buy.asset not in self.months[timestamp.year][timestamp.month][category]:
+            self.months[timestamp.year][timestamp.month][category][buy.asset] = buy.quantity
         else:
-            self.months[timestamp.year][timestamp.month][buy.asset] += buy.quantity 
+            self.months[timestamp.year][timestamp.month][category][buy.asset] += buy.quantity 
 
         # years
-        if buy.asset not in self.years[timestamp.year]:
-            self.years[timestamp.year][buy.asset] = buy.quantity
+        if buy.asset not in self.years[timestamp.year][category]:
+            self.years[timestamp.year][category][buy.asset] = buy.quantity
         else:
-            self.years[timestamp.year][buy.asset] += buy.quantity 
+            self.years[timestamp.year][category][buy.asset] += buy.quantity 
 
 
         # fees
@@ -92,18 +147,27 @@ class BalanceHistoryLog(object):
             else:
                 self.days[timestamp.year][timestamp.month][timestamp.day][fee.asset] -= fee.quantity 
 
-            if fee.asset not in self.months[timestamp.year][timestamp.month]:
-                self.months[timestamp.year][timestamp.month][fee.asset] = -(fee.quantity)
+            if fee.asset not in self.months[timestamp.year][timestamp.month][category]:
+                self.months[timestamp.year][timestamp.month][category][fee.asset] = -(fee.quantity)
             else:
-                self.months[timestamp.year][timestamp.month][fee.asset] -= fee.quantity 
+                self.months[timestamp.year][timestamp.month][category][fee.asset] -= fee.quantity 
 
-            if fee.asset not in self.years[timestamp.year]:
-                self.years[timestamp.year][fee.asset] = -(fee.quantity)
+            if fee.asset not in self.years[timestamp.year][category]:
+                self.years[timestamp.year][category][fee.asset] = -(fee.quantity)
             else:
-                self.years[timestamp.year][fee.asset] -= fee.quantity 
+                self.years[timestamp.year][category][fee.asset] -= fee.quantity 
+
 
     def _subtract_tokens(self, sell, fee):
         timestamp = sell.timestamp
+
+        if sell.asset not in self.assets and sell.asset not in self.other_assets:
+            self.other_assets.append(sell.asset)
+
+        # define type
+        category = "Internal"
+        if sell.t_type in EXTERNAL_TYPES and sell.asset in config.FIAT_LIST:
+            category = "External"
 
         # rows
         if sell.asset not in self.rows[timestamp]:
@@ -111,6 +175,7 @@ class BalanceHistoryLog(object):
         else:
             self.rows[timestamp][sell.asset] -= sell.quantity
         self.rows[timestamp]["t_type"] = sell.t_type
+        self.rows[timestamp]["wallet"] = sell.wallet
 
         # days
         if sell.asset not in self.days[timestamp.year][timestamp.month][timestamp.day]:
@@ -120,17 +185,17 @@ class BalanceHistoryLog(object):
 
 
         # months
-        if sell.asset not in self.months[timestamp.year][timestamp.month]:
-            self.months[timestamp.year][timestamp.month][sell.asset] = -(sell.quantity)
+        if sell.asset not in self.months[timestamp.year][timestamp.month][category]:
+            self.months[timestamp.year][timestamp.month][category][sell.asset] = -(sell.quantity)
         else:
-            self.months[timestamp.year][timestamp.month][sell.asset] -= sell.quantity 
-
+            self.months[timestamp.year][timestamp.month][category][sell.asset] -= sell.quantity 
 
         # years
-        if sell.asset not in self.years[timestamp.year]:
-            self.years[timestamp.year][sell.asset] = -(sell.quantity)
+        if sell.asset not in self.years[timestamp.year][category]:
+            self.years[timestamp.year][category][sell.asset] = -(sell.quantity)
         else:
-            self.years[timestamp.year][sell.asset] -= sell.quantity
+            self.years[timestamp.year][category][sell.asset] -= sell.quantity
+
     
         # fees
         if fee:
@@ -143,14 +208,16 @@ class BalanceHistoryLog(object):
             else:
                 self.days[timestamp.year][timestamp.month][timestamp.day][fee.asset] -= fee.quantity 
 
-            if fee.asset not in self.months[timestamp.year][timestamp.month]:
-                self.months[timestamp.year][timestamp.month][fee.asset] = -(fee.quantity)
+            if fee.asset not in self.months[timestamp.year][timestamp.month][category]:
+                self.months[timestamp.year][timestamp.month][category][fee.asset] = -(fee.quantity)
             else:
-                self.months[timestamp.year][timestamp.month][fee.asset] -= fee.quantity 
-            if fee.asset not in self.years[timestamp.year]:
-                self.years[timestamp.year][fee.asset] = -(fee.quantity)
+                self.months[timestamp.year][timestamp.month][category][fee.asset] -= fee.quantity 
+
+            if fee.asset not in self.years[timestamp.year][category]:
+                self.years[timestamp.year][category][fee.asset] = -(fee.quantity)
             else:
-                self.years[timestamp.year][fee.asset] -= fee.quantity 
+                self.years[timestamp.year][category][fee.asset] -= fee.quantity 
+
 
     def print(self):
 

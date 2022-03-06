@@ -11,12 +11,16 @@ WALLET = "FTX"
 
 def parse_ftx_deposits_crypto(data_row, _parser, **kwargs):
     row_dict = data_row.row_dict
-    data_row.timestamp = DataParser.parse_timestamp(row_dict.get('time', row_dict["Time"]))
+    data_row.timestamp = DataParser.parse_timestamp(row_dict.get('time', row_dict["Time"]), dayfirst=True)
 
     if row_dict.get('status', row_dict["Status"]) not in ('complete', 'confirmed'):
         return
+    
+    t_type =  TransactionOutRecord.TYPE_DEPOSIT
+    if row_dict.get("coin", row_dict["Coin"]) == "SRM_LOCKED":
+        t_type = TransactionOutRecord.TYPE_AIRDROP
 
-    data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_DEPOSIT,
+    data_row.t_record = TransactionOutRecord(t_type,
                                              data_row.timestamp,
                                              buy_asset=row_dict.get("coin", row_dict["Coin"]),
                                              buy_quantity=row_dict.get("size", row_dict["Amount"]),
@@ -43,51 +47,51 @@ def parse_ftx_withdrawals_crypto(data_row, _parser, **kwargs):
 
 def parse_ftx_trades_crypto(data_row, parser, **kwargs):
     row_dict = data_row.row_dict
-    data_row.timestamp = DataParser.parse_timestamp(row_dict['time'])
+    data_row.timestamp = DataParser.parse_timestamp(row_dict['Time'])
 
-    if '/' in row_dict['market']:
+    if '/' in row_dict['Market']:
         # Spot (BTC/USD)
-        base_asset, quote_asset = row_dict['market'].split('/')
+        base_asset, quote_asset = row_dict['Market'].split('/')
     else:
         # Futures (BTC-PERP / BTC-2131)
-        base_asset = row_dict['market']
-        quote_asset = row_dict['feeCurrency']
+        base_asset = row_dict['Market']
+        quote_asset = row_dict['Fee Currency']
 
-    if row_dict['side'] == 'buy':
-        sell_quantity = row_dict['total']
-        if sell_quantity == 0 and float(row_dict['fee']) == 0:
+    if row_dict['Side'] == 'buy':
+        sell_quantity = row_dict['Total']
+        if sell_quantity == 0 and float(row_dict['Fee']) == 0:
             record_type = TransactionOutRecord.TYPE_AIRDROP
             sell_asset = fee_asset = ''
             sell_quantity = fee_quantity = None
         else:
             record_type = TransactionOutRecord.TYPE_TRADE
             sell_asset = quote_asset
-            fee_asset = row_dict['feeCurrency']
-            fee_quantity = row_dict['fee']
+            fee_asset = row_dict['Fee Currency']
+            fee_quantity = row_dict['Fee']
 
         data_row.t_record = TransactionOutRecord(record_type,
                                                  data_row.timestamp,
                                                  buy_asset=base_asset,
-                                                 buy_quantity=row_dict['size'],
+                                                 buy_quantity=row_dict['Size'],
                                                  sell_asset=sell_asset,
                                                  sell_quantity=sell_quantity,
                                                  fee_asset=fee_asset,
                                                  fee_quantity=fee_quantity,
                                                  wallet=WALLET,
-                                                 note=row_dict['type'])
-    elif row_dict['side'] == 'sell':
+                                                 note=row_dict['Order Type'])
+    elif row_dict['Side'] == 'sell':
         data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_TRADE,
                                                  data_row.timestamp,
                                                  buy_asset=quote_asset,
-                                                 buy_quantity=row_dict['total'],
+                                                 buy_quantity=row_dict['Total'],
                                                  sell_asset=base_asset,
-                                                 sell_quantity=row_dict['size'],
-                                                 fee_asset=row_dict['feeCurrency'],
-                                                 fee_quantity=row_dict['fee'],
+                                                 sell_quantity=row_dict['Size'],
+                                                 fee_asset=row_dict['Fee Currency'],
+                                                 fee_quantity=row_dict['Fee'],
                                                  wallet=WALLET,
-                                                 note=row_dict['type'])
+                                                 note=row_dict['Order Type'])
     else:
-        raise UnexpectedTypeError(parser.in_header.index('type'), 'type', row_dict['type'])
+        raise UnexpectedTypeError(parser.in_header.index('Order Type'), 'Order Type', row_dict['Order Type'])
 
 def parse_ftx_trades_crypto_v2(data_row, parser, **kwargs):
     row_dict = data_row.row_dict
@@ -230,6 +234,12 @@ DataParser(DataParser.TYPE_EXCHANGE,
 DataParser(DataParser.TYPE_EXCHANGE,
            'FTX Trades',
            ['id', 'time', 'market', 'side', 'type', 'size', 'price', 'total', 'fee', 'feeCurrency'],
+           worksheet_name='FTX T',
+           row_handler=parse_ftx_trades_crypto)
+
+DataParser(DataParser.TYPE_EXCHANGE,
+           'FTX Trades',
+           ['ID', 'Time', 'Market', 'Side', 'Order Type', 'Size', 'Price', 'Total', 'Fee', 'Fee Currency'],
            worksheet_name='FTX T',
            row_handler=parse_ftx_trades_crypto)
 

@@ -198,7 +198,11 @@ class TransactionBase(object):
         self.tid = self.t_record.set_tid()
 
     def _format_tid(self):
-        return "%s.%s" % (self.tid[0], self.tid[1])
+        try:
+            return "%s.%s" % (self.tid[0], self.tid[1])
+        except Exception:
+            print(f"ERROR formatting tid {self.tid}")
+            return "ERROR"
 
     def _format_quantity(self):
         if self.quantity is None:

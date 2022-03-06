@@ -53,7 +53,7 @@ class TransactionOutRecord(object):
         self.buy_quantity = Decimal(buy_quantity) if buy_quantity is not None else None
         self.buy_asset = buy_asset
         self.buy_value = Decimal(buy_value) if buy_value is not None else None
-        self.sell_quantity = Decimal(sell_quantity) if sell_quantity is not None else None
+        self.sell_quantity = abs(Decimal(sell_quantity)) if sell_quantity is not None else None
         self.sell_asset = sell_asset
         self.sell_value = Decimal(sell_value) if sell_value is not None else None
         self.fee_quantity = Decimal(fee_quantity) if fee_quantity is not None else None

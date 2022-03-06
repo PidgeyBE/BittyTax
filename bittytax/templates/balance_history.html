@@ -1,50 +1,112 @@
 <h2>Fund Acquisition by Year</h2>
 <table width="100%">
     <tr>
-        <th></th>
         <th align="left">Date</th>
+        <th align="right">Type</th>
         {% for asset in balance_history.assets %}
-        <th align="left">{{asset}}</th>
+        <th align="right">{{asset}}</th>
         {% endfor %}
-        <th align="left">Note</th>
+        <th align="right">Note</th>
     </tr>
 
-    <tr>
-        <td colspan="9"><b>Trades:</b></td>
-    </tr>
     {% for year, ydata in balance_history.years.items() %}
+    <tr>    
+        <td colspan="9"><b>Year {{year}}</b></td>
+    </tr>
     <tr>
         <td></td>
-        <td>Year {{year}}</td>
+        <td align="right">External In/Out</td>
         {% for asset in balance_history.assets %}
-        <td><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else "0"}}</b><br>
-        {{"(" if ydata.get(asset)}}{{"+" if ydata.get(asset) and ydata[asset] > 0}}{{ydata.get(asset)|quantityfilter2 if ydata.get(asset) else ""}}{{")" if ydata.get(asset)}}</td>
+        <td align="right">
+            {{"(" if ydata["External"].get(asset)}}{{"+" if ydata["External"].get(asset) and ydata["External"][asset] >
+            0}}{{ydata["External"].get(asset)|quantityfilter2 if
+            ydata["External"].get(asset) else ""}}{{")" if ydata["External"].get(asset)}}
+        </td>
         {% endfor %}
-        <td align="right"></td>
+        <td align="right">
+        <!-- {% for asset in balance_history.other_assets %}
+            {{"(" if ydata["External"].get(asset)}}
+            {{"+" if ydata["External"].get(asset) and ydata["External"][asset] > 0}}
+            {{ydata["External"].get(asset)|quantityfilter2 if ydata["External"].get(asset) else ""}}
+            {{" " if ydata["External"].get(asset)}}
+            {{asset if ydata["External"].get(asset)}}
+            {{")<br>" if ydata["External"].get(asset)}}
+        {% endfor %} -->
+        </td>
     </tr>
+    <tr>
+        <td></td>
+        <td align="right">Trades</td>
+        {% for asset in balance_history.assets %}
+        <td align="right">
+            {{"(" if ydata["Internal"].get(asset)}}{{"+" if ydata["Internal"].get(asset) and ydata["Internal"][asset] > 0}}{{ydata["Internal"].get(asset)|quantityfilter2 if
+            ydata["Internal"].get(asset) else ""}}{{")" if ydata["Internal"].get(asset)}}
+        </td>
+        {% endfor %}
+        <td align="right">
+        <!-- {% for asset in balance_history.other_assets %}
+            {{"(" if ydata["Internal"].get(asset)}}
+            {{"+" if ydata["Internal"].get(asset) and ydata["Internal"][asset] > 0}}
+            {{ydata["Internal"].get(asset)|quantityfilter2 if ydata["Internal"].get(asset) else ""}}
+            {{" " if ydata["Internal"].get(asset)}}
+            {{asset if ydata["Internal"].get(asset)}}
+            {{")<br>" if ydata["Internal"].get(asset)}}
+        {% endfor %} -->
+        </td>
+    </tr>
+    <tr>
+        <td></td>
+        <td align="right"><b>Balance</b></td>
+        {% for asset in balance_history.assets %}
+        <td align="right"><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset)
+                else "0"}}</b></td>
+        {% endfor %}
+        <td align="right">
+        <!-- {% for asset in balance_history.other_assets %}
+        <b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if
+                balance_history.years_cum[year].get(asset)
+                else ""}}
+            {{" " if balance_history.years_cum[year].get(asset)}}
+            {{asset if balance_history.years_cum[year].get(asset)}}
+        </b>
+        {{"<br>" if balance_history.years_cum[year].get(asset)}}
+        {% endfor %} -->
+        </td>
+    </tr>
+    <tr><td colspan="9"></td></tr>
     {% endfor %}
 </table>
-
+<div>
+    <pdf:nextpage />
+</div>
 <h2>Funds Acquisition by Month</h2>
 <table width="100%">
     <tr>
-        <th></th>
         <th align="left">Date</th>
+        <th align="right"></th>
         {% for asset in balance_history.assets %}
-        <th align="left">{{asset}}</th>
+        <th align="right">{{asset}}</th>
         {% endfor %}
-        <th align="left">Note</th>
+        <th align="right">Note</th>
     </tr>
-{% for year, ydata in balance_history.years.items() %}
-    <tr>
-        <td colspan="9"><b>Trades {{year}}:</b></td>
-    </tr>
+{% for year, ydata in balance_history.years_diff.items() %}
     {% for month, mdata in balance_history.months[year].items() %}
     <tr>
+        <td colspan="9">{{month}}/{{year}}</td>
+    </tr>
+    <tr>
         <td></td>
-        <td>{{month}}/{{year}}</td>
+        <td align="right">External In/Out</td>
         {% for asset in balance_history.assets %}
-        <td>{{mdata.get(asset)|quantityfilter2 if mdata.get(asset) else ""}}</td>
+        <td align="right">{{mdata["External"].get(asset)|quantityfilter2 if mdata["External"].get(asset) else ""}}</td>
+        {% endfor %}
+        <td align="right"></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td align="right">Trades</td>
+        {% for asset in balance_history.assets %}
+        <td align="right">{{mdata["Internal"].get(asset)|quantityfilter2 if mdata["Internal"].get(asset) else ""}}</td>
         {% endfor %}
         <td align="right"></td>
     </tr>
@@ -52,47 +114,52 @@
     <tr>
         <td colspan="2"><b>Yearly Total {{year}}</b></td>
         {% for asset in balance_history.assets %}
-        <td><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else "0"}}<br>
+        <td align="right"><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else "0"}}<br>
         {{"(" if ydata.get(asset)}}{{"+" if ydata.get(asset) and ydata[asset] > 0}}{{ydata.get(asset)|quantityfilter2 if
-        ydata.get(asset) else ""}}{{")" if ydata.get(asset)}}</b></td>
+        ydata.get(asset) else ""}}{{")" if ydata.get(asset)}}</b>
+    </td>
         {% endfor %}
         <td align="right"></td>
     </tr>
 {% endfor %}
 </table>
 
-
+<div>
+    <pdf:nextpage />
+</div>
 <h2>Funds Acquisition by Transaction</h2>
 <table width="100%">
     <tr>
-        <th></th>
         <th align="left">Date</th>
+        <th align="right">Type</th>
 {% for asset in balance_history.assets %}
-        <th align="left">{{asset}}</th>
+        <th align="right">{{asset}}</th>
 {% endfor %}
-        <th align="left">Note</th>
+        <th align="right">Note</th>
     </tr>
-{% for year, ydata in balance_history.years.items() %}
-    <tr>
-        <td colspan="9"><b>Trades {{year}}:</b></td>
-    </tr>
-    {% for month, mdata in balance_history.months[year].items() %}
+{% for year, ydata in balance_history.years_diff.items() %}
+    {% for month, mdata in balance_history.months_diff[year].items() %}
         {% for time, data in balance_history.rows.items() %}
             {% if time.month == month and time.year == year %}
                 <tr>
-                    <td></td>
                     <td>{{time|datefilter}}</td>
+                    <td align="right">{{data["t_type"]}} ({{data["wallet"]}})</td>
                 {% for asset in balance_history.assets %}
-                    <td>{{data.get(asset)|quantityfilter2 if data.get(asset) else ""}}</td>
+                    <td align="right">{{data.get(asset)|quantityfilter2 if data.get(asset) else ""}}</td>
                 {% endfor %}
-                    <td align="right">{{data["t_type"]}}</td>
+                <td align="right">
+                {% for asset in balance_history.other_assets %}
+                    {{data.get(asset)|quantityfilter2 if data.get(asset) else ""}}
+                    {{asset if data.get(asset) else ""}}
+                {% endfor %}
+                </td>
                 </tr>
             {% endif %}
         {% endfor %}
         <tr>
-            <td colspan="2"><b>Monthly Total {{month}}/{{year}}</b></td>
+            <td colspan="2"><b>Monthly Change {{month}}/{{year}}</b></td>
             {% for asset in balance_history.assets %}
-            <td><b>{{mdata.get(asset)|quantityfilter2 if mdata.get(asset) else ""}}</b></td>
+            <td align="right"><b>{{mdata.get(asset)|quantityfilter2 if mdata.get(asset) else ""}}</b></td>
             {% endfor %}
             <td align="right"></td>
         </tr>
@@ -100,7 +167,7 @@
             <tr>
                 <td colspan="2"><b>Yearly Total {{year}}</b></td>
         {% for asset in balance_history.assets %}
-        <td><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else
+        <td align="right"><b>{{balance_history.years_cum[year].get(asset)|quantityfilter2 if balance_history.years_cum[year].get(asset) else
                 "0"}}<br>
                 {{"(" if ydata.get(asset)}}{{"+" if ydata.get(asset) and ydata[asset] > 0}}{{ydata.get(asset)|quantityfilter2 if
                 ydata.get(asset) else ""}}{{")" if ydata.get(asset)}}</b></td>
