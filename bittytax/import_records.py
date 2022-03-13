@@ -17,6 +17,7 @@ from .exceptions import TransactionParserError, UnexpectedTransactionTypeError, 
                         TimestampParserError, DataValueError, MissingDataError, \
                         UnexpectedDataError
 
+LIMIT_YEAR = 2022
 class ImportRecords(object):
     def __init__(self):
         self.t_rows = []
@@ -131,7 +132,7 @@ class ImportRecords(object):
             self.success_cnt += 1
 
     def get_records(self):
-        transaction_records = [t_row.t_record for t_row in self.t_rows if t_row.t_record]
+        transaction_records = [t_row.t_record for t_row in self.t_rows if t_row.t_record and t_row.t_record.timestamp.year < LIMIT_YEAR]
 
         transaction_records.sort()
         for t_record in transaction_records:
