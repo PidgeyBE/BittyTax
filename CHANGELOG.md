@@ -19,6 +19,7 @@
 - PolygonScan parser: exclude failed internal transactions.
 - SnowTrace parser: exclude failed internal transactions.
 - Etherscan merger: only merge transactions for the same wallet address.
+- Electrum parser: handle optional fees.
 ### Added
 - Conversion tool: generic parser added to support import from CryptoCredible tool.
 - Conversion tool: added parser for SnowTrace explorer.
@@ -40,6 +41,7 @@
 - Conversion tool: added parser for Mercatox exchange.
 - Conversion tool: added parser for Bitpanda exchange.
 - Conversion tool: added parser for CoinList exchange.
+- Conversion tool: added parser for Koinly accounting data.
 ### Changed
 - Binance parser: performance improvements for large data sets.
 - Coinbase Pro parser: performance improvements for large data sets.
