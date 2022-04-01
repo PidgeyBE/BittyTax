@@ -43,6 +43,7 @@ from . import ledgerlive
 from . import liquid
 from . import mercatox
 from . import nault
+from . import monero
 from . import nexo
 from . import okex
 from . import poloniex
