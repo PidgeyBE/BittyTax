@@ -1,6 +1,6 @@
 <h2>Final Balances</h2>
 {% for wallet in audit.wallets|sort %}
-    <table repeat="1" width="50%">
+    <table repeat="1" width="100%">
         <tr>
             <th align="left">Wallet</th>
             <th align="left">Asset</th>
@@ -15,4 +15,32 @@
         {% endfor %}
      </table>
      <br>
+{% endfor %}
+<div>
+    <pdf:nextpage />
+</div>
+<h2>Final Balances in EURO on 31/12/2021</h2>
+{% for wallet in audit.wallets|sort %}
+<table repeat="1" width="100%">
+    <tr>
+        <th align="left">Wallet</th>
+        <th align="left">Asset</th>
+        <th align="right">Balance</th>
+        <th align="right">Balance in EUR (on 31/12/2021)</th>
+    </tr>
+    {% for asset in audit.wallets[wallet]|sort %}
+        {% if audit.wallet_values[wallet][asset]["EUR"] and audit.wallet_values[wallet][asset]["EUR"] > 100 %}
+        <tr>
+            <td>{{wallet|nowrapfilter}}</td>
+            <td>{{asset}}</td>
+            <td align="right">{{audit.wallets[wallet][asset]|quantityfilter}}</td>
+            {% if wallet in audit.wallet_values %}
+            <td align="right">{{audit.wallet_values[wallet][asset]["EUR"]|quantityfilter2 if
+                audit.wallet_values[wallet][asset]["EUR"] else ""}}</td>
+            {% endif %}
+        </tr>
+        {% endif %}
+    {% endfor %}
+</table>
+<br>
 {% endfor %}

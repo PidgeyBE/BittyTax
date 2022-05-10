@@ -5,6 +5,7 @@ import os
 import atexit
 import json
 import platform
+import time
 from decimal import Decimal
 from datetime import datetime, timedelta
 
@@ -43,10 +44,15 @@ class DataSourceBase(object):
         if config.debug:
             print("%sprice: GET %s" % (Fore.YELLOW, url))
 
-        response = requests.get(url, headers={'User-Agent': self.USER_AGENT}, timeout=self.TIME_OUT)
+        while True:
+            response = requests.get(url, headers={'User-Agent': self.USER_AGENT}, timeout=self.TIME_OUT)
 
-        if response.status_code in [429, 502, 503, 504]:
-            response.raise_for_status()
+            if response.status_code in [429, 502, 503, 504]:
+                #response.raise_for_status()
+                print(f"Fetching URL {url} got a {response.status_code}... Backing off 10 seconds")
+                time.sleep(10)
+                continue
+            break
 
         if response:
             return response.json()

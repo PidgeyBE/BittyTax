@@ -3,15 +3,21 @@
 
 import sys
 from decimal import Decimal
+from collections import defaultdict
 
 from colorama import Fore, Back, Style
 from tqdm import tqdm
+import time
+import dateutil.parser
+
 
 from .config import config
+from .price.valueasset import ValueAsset
 
 class AuditRecords(object):
     def __init__(self, transaction_records):
         self.wallets = {}
+        self.wallet_values = defaultdict(dict)
         self.totals = {}
         self.failures = []
 
@@ -32,6 +38,54 @@ class AuditRecords(object):
 
             if tr.fee:
                 self._subtract_tokens(tr.wallet, tr.fee.asset, tr.fee.quantity)
+
+        # Convert to BTC and USD values
+        print("*"*150)
+        print("CONVERTING ASSET VALUES -- THIS MIGHT TAKE A WHILE")
+        print("*"*150)
+        print()
+        date = dateutil.parser.parse("2021-12-31", dayfirst=False)
+        date = date.replace(tzinfo=config.TZ_LOCAL)
+        num_wallets = len(self.wallets)
+        for i, wallet in enumerate(self.wallets.keys()):
+            print("*"*150)
+            print(f"Converting {wallet} {(i+1)/num_wallets}...")
+            print()
+            for asset, value in self.wallets[wallet].items():
+                if asset == config.ccy:
+                    self.wallet_values[wallet][asset] = {
+                                "BTC": None,
+                                config.ccy: value,
+                    }
+                elif asset in config.FIAT_LIST or asset == "BTC":
+                    value_asset = ValueAsset(price_tool=True)
+                    eur_value, name, _ = value_asset.get_historical_price(
+                        asset, date,
+                        target_asset=config.ccy
+                    )
+                    self.wallet_values[wallet][asset] = {
+                                "BTC": None if asset != "BTC" else value,
+                                config.ccy: eur_value*value,
+                    }
+                else:
+                    time.sleep(1)
+                    value_asset = ValueAsset(price_tool=True)
+                    eur_value, name, _ = value_asset.get_historical_price(
+                        asset, date,
+                        target_asset=config.ccy
+                    )
+                    btc_value, name, _ = value_asset.get_historical_price(
+                        asset, date,
+                        target_asset="BTC"
+                    )
+                    self.wallet_values[wallet][asset] = {
+                                "BTC": btc_value*value if btc_value else None,
+                                config.ccy: eur_value*value if eur_value else None,
+                    }
+            # if i==0:
+            #     break
+
+        print(f"WALLET CONVERSUIONS {self.wallet_values}")
 
         if config.debug:
             print("%saudit: final balances by wallet" % Fore.CYAN)

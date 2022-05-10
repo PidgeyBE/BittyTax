@@ -58,7 +58,7 @@ class ValueAsset(object):
 
         return None, None, None
 
-    def get_historical_price(self, asset, timestamp, no_cache=False):
+    def get_historical_price(self, asset, timestamp, no_cache=False, target_asset=None):
         asset_price_ccy = None
 
         if not self.price_tool and timestamp.date() >= datetime.now().date():
@@ -78,17 +78,23 @@ class ValueAsset(object):
                                                                                      'BTC',
                                                                                      timestamp,
                                                                                      no_cache)
-            if asset_price_btc is not None:
-                btc_price_ccy, name2, data_source2, url2 = self.price_data.get_historical(
-                    'BTC', config.ccy, timestamp, no_cache)
-                if btc_price_ccy is not None:
-                    asset_price_ccy = btc_price_ccy * asset_price_btc
+            if target_asset == config.ccy: 
+                if asset_price_btc is not None:
+                    btc_price_ccy, name2, data_source2, url2 = self.price_data.get_historical(
+                        'BTC', config.ccy, timestamp, no_cache)
+                    if btc_price_ccy is not None:
+                        asset_price_ccy = btc_price_ccy * asset_price_btc
 
-                self.price_report_cache('BTC', timestamp, name2, data_source2, url2, btc_price_ccy)
+                    self.price_report_cache('BTC', timestamp, name2, data_source2, url2, btc_price_ccy)
+            elif target_asset == "BTC":
+                asset_price_ccy = asset_price_btc
+            else:
+                print(f"SHITTT target_asset {target_asset} is not supported")
 
             self.price_report_cache(asset, timestamp, name, data_source, url, asset_price_ccy,
                                     asset_price_btc)
-
+        if asset_price_ccy is None:
+            print(f"OOPS Lookup for asset {asset}->{target_asset} on {timestamp} was no success! URL {url}")
         return asset_price_ccy, name, data_source
 
     def get_latest_price(self, asset):
