@@ -17,7 +17,7 @@ from .version import __version__
 from .config import config
 
 class ReportPdf(object):
-    DEFAULT_FILENAME = 'BittyTax_Report'
+    DEFAULT_FILENAME = 'PeejaiTax_Report'
     FILE_EXTENSION = 'pdf'
     TEMPLATE_FILE = 'tax_report.html'
 
