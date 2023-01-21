@@ -183,6 +183,7 @@ def do_import(filename):
 def do_tax(transaction_records, tax_rules, skip_integrity_check):
     value_asset = ValueAsset()
     transaction_history = TransactionHistory(transaction_records, value_asset)
+    value_asset.save_cache()
 
     tax = TaxCalculator(transaction_history.transactions, tax_rules)
     tax.pool_same_day()

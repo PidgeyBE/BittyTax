@@ -2,15 +2,20 @@
 # (c) Nano Nano Ltd 2019
 
 import sys
+import os
 from decimal import Decimal
 from collections import defaultdict
 from copy import deepcopy
+import dateutil.parser
+import datetime
   
 from colorama import Fore, Back, Style
 from tqdm import tqdm
 
 from .config import config
 from .transactions import TransactionRecord
+from .price.valueasset import ValueAsset
+
 
 PRINT_ASSETS = ["EUR", "USD", "XMR", "BTC", "ETH", "SOL", "FTT"]
 
@@ -39,6 +44,14 @@ EXTERNAL_TYPES = {TYPE_SPEND, TYPE_GIFT_SENT, TYPE_GIFT_SPOUSE, TYPE_CHARITY_SEN
 def ddict():
     return defaultdict(ddict)
 
+def last_day_of_month(any_day):
+    # this will never fail
+    # get close to the end of the month for any day, and add 4 days 'over'
+    next_month = any_day.replace(day=28) + datetime.timedelta(days=4)
+    # subtract the number of remaining 'overage' days to get last day of current month, or said programattically said, the previous day of the first of next month
+    date = next_month - datetime.timedelta(days=next_month.day)
+    return datetime.datetime(year=date.year, month=date.month, day=date.day)
+
 class BalanceHistoryLog(object):
     def __init__(self, transaction_records):
         self.rows = defaultdict(ddict)
@@ -47,6 +60,8 @@ class BalanceHistoryLog(object):
         self.years = defaultdict(ddict)
         self.assets = PRINT_ASSETS
         self.other_assets = []
+        self.staking = {}
+        self.staking_yearly_sum = {}
 
         if config.debug:
             print("%sBalance History log transaction records" % Fore.CYAN)
@@ -62,8 +77,21 @@ class BalanceHistoryLog(object):
 
             if tr.sell:
                 self._subtract_tokens(tr.sell, tr.fee)
+            
+            if tr.t_type == TYPE_STAKING:
+                self._stake(tr.buy)
+
+        # calculate staking overview
+        self.stake_to_eur()
+        self.yearly_stake()
+
+        # calculate monthly and yearly diffs and sums
+        self.calculate_diffs_and_sums()
+        # Get price values for every asset
+        self.get_monthly_values_in_eur()
 
 
+    def calculate_diffs_and_sums(self):
         # In montly/transaction overviews, we don't make a difference between Internal/External
         self.months_diff = deepcopy(self.months)
         years = [y for y in self.years]
@@ -97,6 +125,135 @@ class BalanceHistoryLog(object):
                 else:
                     self.years_cum[year][asset] = self.years_cum[year-1][asset]
 
+
+        self.months_cum = deepcopy(self.months_diff)
+        for year in years:
+            months = [y for y in self.months_diff[year]]
+            for month in months:
+                year_offset = 1 if month == 1 else 0
+                month_diff = -11 if month == 1 else 1
+                for asset in self.months_cum[year-year_offset][month-month_diff]:
+                    if asset in self.months_cum[year][month]:
+                        self.months_cum[year][month][asset] += self.months_cum[year-year_offset][month-month_diff][asset]
+                    else:
+                        self.months_cum[year][month][asset] = self.months_cum[year-year_offset][month-month_diff][asset]
+
+
+    def get_monthly_values_in_eur(self):
+        self.months_cum_converted = {}
+        value_asset = ValueAsset(price_tool=True)
+        assets = set()
+        for year in self.months_cum:
+            self.months_cum_converted[year] = {}
+            for month in self.months_cum[year]:
+                self.months_cum_converted[year][month] = {}
+                cumul = 0
+                for asset, value in self.months_cum[year][month].items():
+                    
+                    date = last_day_of_month(datetime.date(year, month, 1))
+                    date = date.replace(tzinfo=config.TZ_LOCAL)
+
+                    if asset == config.ccy:
+                        self.months_cum_converted[year][month][asset] = {
+                            "value": value,
+                            config.ccy: value,
+                            }
+                    elif asset in config.FIAT_LIST or asset == "BTC":
+                        eur_value, name, _ = value_asset.get_historical_price(
+                            asset, date,
+                            target_asset=config.ccy
+                        )
+                        self.months_cum_converted[year][month][asset] = {
+                            "value": value,
+                            config.ccy: value*eur_value
+                        }
+                    else:
+                        eur_value, name, _ = value_asset.get_historical_price(
+                            asset, date,
+                            target_asset=config.ccy
+                        )
+                        self.months_cum_converted[year][month][asset] = {
+                            "value": value,
+                            config.ccy: value*eur_value if eur_value else None,
+                        }
+
+                    if self.months_cum_converted[year][month][asset][config.ccy] is not None:
+                        cumul += self.months_cum_converted[year][month][asset][config.ccy]
+                        assets.add(asset)
+                # save cumul
+                # self.months_cum_converted[year][month]["CUMMULATIVE"] = {config.ccy: cumul}
+        value_asset.save_cache()
+
+        # Save cumulative total
+        p = os.path.join(config.BITTYTAX_PATH, "monthly_cumul.csv")
+        with open(p, "w") as f:
+            f.write(f'Date')
+            for asset in assets:
+                f.write(f', {asset}')
+            f.write('\n')
+            for year in self.months_cum:
+                for month in self.months_cum_converted[year]:
+                    f.write(f'{month}/{year}')
+                    for asset in assets:
+                        eur_value = self.months_cum_converted[year][month].get(asset, {}).get(config.ccy, "")
+                        f.write(f', {eur_value}')
+                    f.write('\n')
+
+    def _stake(self, record):
+
+        timestamp = record.timestamp
+        year = timestamp.year
+        month = timestamp.month
+        day = timestamp.day
+        asset = record.asset
+        quantity = record.quantity
+
+        if year not in self.staking:
+            self.staking[year] = {}
+        if month not in self.staking[year]:
+            self.staking[year][month] = {}
+        if day not in self.staking[year][month]:
+            self.staking[year][month][day] = {}
+        
+        if asset in self.staking[year][month][day]:
+            self.staking[year][month][day][asset]["value"] += quantity
+        else:
+            self.staking[year][month][day][asset] = {"value": quantity}
+
+
+    def stake_to_eur(self):
+        value_asset = ValueAsset(price_tool=True)
+        for year in self.staking:
+            for month in self.staking[year]:
+                for day in self.staking[year][month]:
+                    for asset in self.staking[year][month][day]:
+                        value = self.staking[year][month][day][asset]["value"]
+                        date = datetime.datetime(year, month, day)
+                        date = date.replace(tzinfo=config.TZ_LOCAL)
+                        if asset == config.ccy:
+                            self.staking[year][month][day][asset][config.ccy] = value,
+                        elif asset in config.FIAT_LIST or asset == "BTC":
+                            eur_value, name, _ = value_asset.get_historical_price(
+                                asset, date,
+                                target_asset=config.ccy
+                            )
+                            self.staking[year][month][day][asset][config.ccy] = value*eur_value
+                        else:
+                            eur_value, name, _ = value_asset.get_historical_price(
+                                asset, date,
+                                target_asset=config.ccy
+                            )
+                            self.staking[year][month][day][asset][config.ccy] = value*eur_value if eur_value else None
+
+    def yearly_stake(self):
+        for year in self.staking:
+            self.staking_yearly_sum[year] = 0
+            for month in self.staking[year]:
+                for day in self.staking[year][month]:
+                    for asset in self.staking[year][month][day]:
+                        if self.staking[year][month][day][asset][config.ccy] is None:
+                            continue
+                        self.staking_yearly_sum[year] += self.staking[year][month][day][asset][config.ccy]
 
     def _add_tokens(self, buy, fee):
         timestamp = buy.timestamp

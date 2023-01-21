@@ -176,4 +176,40 @@
             </tr>
 {% endfor %}
 </table>
+
+
+
+<div>
+    <pdf:nextpage />
+</div>
+<h2>Staking overview</h2>
+{% for year, ydata in balance_history.staking.items() %}
+<table width="100%">
+    <tr>
+        <th align="left">Date</th>
+        <th align="right">Asset</th>
+        <th align="right">Reward in Asset</th>
+        <th align="right">Reward in EUR</th>
+        <th align="right">30% tax in EUR</th>
+    </tr>
+    {% for month, mdata in ydata.items() %}
+        {% for day, daydata in mdata.items() %}
+            {% for asset, data in daydata.items() %}
+                <tr>
+                    <td align="left">{{day}}/{{month}}/{{year}}</td>
+                    <td align="right">{{asset}}</td>
+                    <td align="right">{{data["value"]}}</td>
+                    <td align="right">{{data["EUR"]|quantityfilter2}}</td>
+                    <td align="right">{{data["EUR"]|quantityfilter3}}</td>
+                </tr>
+            {% endfor %}
+        {% endfor %}
+    {% endfor %}
+    <tr>
+        <td colspan="2"><b>Yearly Total {{year}}</b></td>
+        <td colspan="2"><b>&euro;{{balance_history.staking_yearly_sum[year]|quantityfilter2}}</b></td>
+        <td colspan="2"><b>&euro;{{balance_history.staking_yearly_sum[year]|quantityfilter3}}</b></td>
+    </tr>
+</table>
+{% endfor %}
 <br>

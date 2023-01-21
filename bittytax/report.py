@@ -29,6 +29,7 @@ class ReportPdf(object):
         self.env.filters['datefilter2'] = self.datefilter2
         self.env.filters['quantityfilter'] = self.quantityfilter
         self.env.filters['quantityfilter2'] = self.quantityfilter2
+        self.env.filters['quantityfilter3'] = self.quantityfilter3
         self.env.filters['valuefilter'] = self.valuefilter
         self.env.filters['ratefilter'] = self.ratefilter
         self.env.filters['ratesfilter'] = self.ratesfilter
@@ -76,6 +77,11 @@ class ReportPdf(object):
     @staticmethod
     def quantityfilter2(quantity):
         return '{:0,.6f}'.format(quantity.normalize())
+
+    @staticmethod
+    def quantityfilter3(quantity):
+        tax = float(quantity)*0.3
+        return '{:0,.3f}'.format(tax)
 
     @staticmethod
     def valuefilter(value):

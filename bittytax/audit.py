@@ -47,6 +47,7 @@ class AuditRecords(object):
         date = dateutil.parser.parse("2021-12-31", dayfirst=False)
         date = date.replace(tzinfo=config.TZ_LOCAL)
         num_wallets = len(self.wallets)
+        value_asset = ValueAsset(price_tool=True)
         for i, wallet in enumerate(self.wallets.keys()):
             print("*"*150)
             print(f"Converting {wallet} {(i+1)/num_wallets}...")
@@ -58,7 +59,6 @@ class AuditRecords(object):
                                 config.ccy: value,
                     }
                 elif asset in config.FIAT_LIST or asset == "BTC":
-                    value_asset = ValueAsset(price_tool=True)
                     eur_value, name, _ = value_asset.get_historical_price(
                         asset, date,
                         target_asset=config.ccy
@@ -68,8 +68,7 @@ class AuditRecords(object):
                                 config.ccy: eur_value*value,
                     }
                 else:
-                    time.sleep(1)
-                    value_asset = ValueAsset(price_tool=True)
+                    # time.sleep(1)
                     eur_value, name, _ = value_asset.get_historical_price(
                         asset, date,
                         target_asset=config.ccy

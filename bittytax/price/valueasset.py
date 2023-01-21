@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # (c) Nano Nano Ltd 2019
 
+import os
 from decimal import Decimal
 from datetime import datetime
+import json
 
 from colorama import Fore, Back, Style
 from tqdm import tqdm
@@ -10,6 +12,7 @@ from tqdm import tqdm
 from ..version import __version__
 from ..config import config
 from .pricedata import PriceData
+
 
 class ValueAsset(object):
     def __init__(self, price_tool=False):
@@ -20,6 +23,42 @@ class ValueAsset(object):
                                 {x.split(':')[0]
                                  for v in config.data_source_select.values() for x in v}
         self.price_data = PriceData(data_sources_required, price_tool)
+
+        # Addition to store cache long term
+        self.cache_path = os.path.join(config.BITTYTAX_PATH, "historic_price_cache.json")
+        self.cache = {} # self.cache[asset][target_asset][date]["price"]
+        self._load_cache()
+
+    def save_cache(self):
+        """Getting historical values is very expensive, so save as much as possible."""
+        with open(self.cache_path, "w") as json_file:
+            json.dump(self.cache, json_file)
+
+    def _load_cache(self):
+        if os.path.exists(self.cache_path):
+            with open(self.cache_path, "r") as json_file:
+                self.cache = json.load(json_file)
+
+    def _get_from_cache(self, asset, target_asset, date):
+        if date in self.cache.get(asset, {}).get("valuta", {}).get(target_asset, {}):
+            asset_price_ccy = self.cache[asset]["valuta"][target_asset][date]
+            name = self.cache[asset]["name"]
+            data_source = self.cache[asset]["data_source"]
+            if asset_price_ccy is not None:
+                asset_price_ccy = Decimal(asset_price_ccy)
+            return asset_price_ccy, name, data_source
+
+    def _add_to_cache(self, asset, target_asset, date, asset_price_ccy, name, data_source):
+        if asset not in self.cache:
+            self.cache[asset] = {"name": name, "data_source": data_source, "valuta": {}}
+        if target_asset not in self.cache[asset]["valuta"]:
+            self.cache[asset]["valuta"][target_asset] = {}
+        if isinstance(asset_price_ccy, Decimal):
+            asset_price_ccy = str(asset_price_ccy)
+        self.cache[asset]["valuta"][target_asset][date] = asset_price_ccy
+        # Autosave as I expect getting values from API's is expensive and all progress should
+        # be saved.
+        self.save_cache()
 
     def get_value(self, asset, timestamp, quantity):
         if asset == config.ccy:
@@ -67,6 +106,13 @@ class ValueAsset(object):
                                                asset, timestamp.strftime('%Y-%m-%d')))
             return self.get_latest_price(asset)
 
+        # first get value out of diskcache
+        date = timestamp.strftime('%Y-%m-%d')
+        if not no_cache:
+            c = self._get_from_cache(asset, target_asset, date)
+            if c is not None:
+                return c
+
         if asset == 'BTC' or asset in config.fiat_list:
             asset_price_ccy, name, data_source, url = self.price_data.get_historical(asset,
                                                                                      config.ccy,
@@ -95,6 +141,10 @@ class ValueAsset(object):
                                     asset_price_btc)
         if asset_price_ccy is None:
             print(f"OOPS Lookup for asset {asset}->{target_asset} on {timestamp} was no success! URL {url}")
+        
+        # fill cache
+        self._add_to_cache(asset, target_asset, date, asset_price_ccy, name, data_source)
+        
         return asset_price_ccy, name, data_source
 
     def get_latest_price(self, asset):
